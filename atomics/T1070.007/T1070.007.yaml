@@ -1,0 +1,8 @@
+  - name: 'Local disk wipe '
+    description: 'This test wipes C: drive using cipher.exe'
+    supported_platforms:
+    - windows
+    executor:
+      command: 'cipher.exe /w:C:'
+      name: powershell
+   
