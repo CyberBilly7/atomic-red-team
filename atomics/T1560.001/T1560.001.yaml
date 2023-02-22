@@ -238,41 +238,33 @@ atomic_tests:
       tar -cvzf #{output_file} #{input_file_folder}
     cleanup_command: |
       rm -f #{output_file}
-- name: Data Encrypted with zip and gpg symmetric
-  auto_generated_guid: 0286eb44-e7ce-41a0-b109-3da516e05a5f
-  description: |
-    Encrypt data for exiltration
+- name: Data Encrypted with GPG4Win
+  description:
+    Gpg4win is a Windows tool (also called Kleopatra which is the preferred certificate manager) that uses email and file encryption packages for symmetric encryption. 
+		It is used by attackers to encrypt disks. User will need to add pass phrase to encrypt file as automation is not allowed under newer versions.  
   supported_platforms:
-  - macos
-  - linux
+    - windows
   input_arguments:
-    test_folder:
-      description: Path used to store files.
-      type: path
-      default: /tmp/T1560
-    test_file:
-      description: Temp file used to store encrypted data.
-      type: path
-      default: T1560
-    encryption_password:
-      description: Password used to encrypt data.
-      type: string
-      default: InsertPasswordHere
-  dependency_executor_name: sh
+    GPG_Exe_Location:
+      description: Path of the GPG program
+      type: Path
+      default: 'C:\Program Files (x86)\GnuPG\bin\gpg.exe'
+    File_to_Encrypt_Location:
+      description: Path of File
+      type: Path
+      default: '$env:temp\test.txt'
   dependencies:
-  - description: gpg and zip are required to run the test.
-    prereq_command: |
-      if [ ! -x "$(command -v gpg)" ] || [ ! -x "$(command -v zip)" ]; then exit 1; fi;
-    get_prereq_command: |
-      (which yum && yum -y install epel-release zip gpg)||(which apt-get && apt-get install -y zip gpg)
+    - description: |
+        GPG must exist at (#{GPG_Exe_Location})
+      prereq_command: |
+        if (test-path '#{GPG_Exe_Location}'){exit 0} else {exit 1}
+      get_prereq_command: |
+        invoke-webrequest "https://files.gpg4win.org/gpg4win-4.1.0.exe" -outfile "$env:temp\gpginstall.exe"
+        cmd /c "$env:temp\gpginstall.exe" /S
   executor:
-    name: sh
+    name: powershell
     elevation_required: false
     command: |
-      mkdir -p #{test_folder}
-      cd #{test_folder}; touch a b c d e f g
-      zip --password "#{encryption_password}" #{test_folder}/#{test_file} ./*
-      echo "#{encryption_password}" | gpg --batch --yes --passphrase-fd 0 --output #{test_folder}/#{test_file}.zip.gpg -c #{test_folder}/#{test_file}.zip
-      ls -l #{test_folder}
+      cmd /c '#{GPG_Exe_Location}' -c '#{File_to_Encrypt_Location}'
     cleanup_command: |
-      rm -Rf #{test_folder}
+      remove-item '#{File_to_Encrypt_Location}.gpg' -force -erroraction silentlycontinue | out-null
