@@ -112,6 +112,36 @@ atomic_tests:
     command: |
       schtasks.exe /Change /TN "\Microsoft\Windows\SystemRestore\SR" /disable
     cleanup_command: |
-      schtasks.exe /Change /TN "\Microsoft\Windows\SystemRestore\SR" /enable
+      schtasks.exe /Change /TN "\Microsoft\Windows\SystemRestore\SR" /enable >nul 2>&1
+    name: command_prompt
+    elevation_required: true
+- name: Disable System Restore Through Registry
+  auto_generated_guid: 66e647d1-8741-4e43-b7c1-334760c2047f
+  description: |
+    Modify the registry of the currently logged in user using reg.exe via cmd console to disable system restore on the computer. 
+    See how remcos RAT abuses this technique- https://www.virustotal.com/gui/file/2d7855bf6470aa323edf2949b54ce2a04d9e38770f1322c3d0420c2303178d91/details
+  supported_platforms:
+  - windows
+  executor:
+    command: |
+      reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows NT\SystemRestore" /v "DisableConfig" /t "REG_DWORD" /d "1" /f
+      reg add "HKLM\SOFTWARE\Policies\Microsoft\Windows NT\SystemRestore" /v "DisableSR" /t "REG_DWORD" /d "1" /f
+      reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\SystemRestore" /v "DisableConfig" /t "REG_DWORD" /d "1" /f
+      reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\SystemRestore" /v "DisableSR" /t "REG_DWORD" /d "1" /f
+    cleanup_command: |
+      reg delete "HKLM\SOFTWARE\Policies\Microsoft\Windows NT\SystemRestore" /v "DisableConfig" /f >nul 2>&1
+      reg delete "HKLM\SOFTWARE\Policies\Microsoft\Windows NT\SystemRestore" /v "DisableSR" /f >nul 2>&1
+      reg delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\SystemRestore" /v "DisableConfig" /f >nul 2>&1
+      reg delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\SystemRestore" /v "DisableSR" /f >nul 2>&1
+    name: command_prompt
+    elevation_required: true
+- name: Windows - vssadmin Resize Shadowstorage Volume
+  auto_generated_guid: da558b07-69ae-41b9-b9d4-4d98154a7049
+  description: 
+    Adversaries generally try to Resize Shadowstorage Volume using vssadmin.exe to avoid the shadow volumes being made again. This technique is typically found used by adversaries during a ransomware event and a precursor to deleting the shadowstorage.
+  supported_platforms:
+  - windows
+  executor:
+    command: 'vssadmin resize shadowstorage /For=C: /On=C: /MaxSize=20%'
     name: powershell
     elevation_required: true

